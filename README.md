@@ -21,3 +21,8 @@ To run execute
 ***java -jar target/dupsfinder-0.0.1-SNAPSHOT.jar [directory]***
 
 If [directory] is not provided, current directory is used.
+
+Output format
+-------------
+
+{SHA-1 sum}:{number of duplicates}:{file size in bytes}:"{file full path}"
