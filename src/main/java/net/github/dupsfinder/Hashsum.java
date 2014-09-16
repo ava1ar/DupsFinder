@@ -15,7 +15,7 @@ import java.security.NoSuchAlgorithmException;
  */
 public class Hashsum {
 
-	private static final int BUFFER_SIZE = 8192;
+	private static final int BUFFER_SIZE = 4096;
 
 	private Hashsum() {
 		// hidden constructor for the utility class

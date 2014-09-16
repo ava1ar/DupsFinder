@@ -32,9 +32,7 @@ public class DupsFinder {
 	}
 
 	private final int threadsCount;
-	// statistics variables
-	private int filesCount = 0, duplicatesCount = 0;
-	private long wastedSpace = 0;
+	private int filesCount = 0;
 
 	private DupsFinder(int threadsCount) {
 		this.threadsCount = threadsCount;
@@ -63,10 +61,7 @@ public class DupsFinder {
 			final Collection groupedByHashsum = groupByHashsum(groupedByPartialHashsum, threadsCount, false);
 
 			// print diplicates from groupedByHashsum and total summary
-			printDuplicates(groupedByHashsum);
-			final String summaryStr = String.format("Examined %s files, found %s dups, total wasted space %s",
-					filesCount, duplicatesCount, humanReadableByteCount(wastedSpace, false));
-			System.out.println(summaryStr);
+			printResults(groupedByHashsum);
 		} catch (IOException | HashsumCalculationException ex) {
 			System.err.println("WARN " + ex);
 		}
@@ -108,7 +103,8 @@ public class DupsFinder {
 				System.err.println("WARN " + ex);
 				return CONTINUE;
 			}
-		});
+		}
+		);
 		return groupedFilesMap.values();
 	}
 
@@ -118,12 +114,12 @@ public class DupsFinder {
 	 *
 	 * @param groupedFiles collection of files groups with identical size
 	 * @param threadCount number of threads to execute method
-	 * @param partialChecksum if true, use partial checksum instead of whole file checksum
+	 * @param usePartialChecksum if true, use partial checksum instead of whole file checksum
 	 * @return collection of files groups with identical checksum (partial or complete)
 	 */
-	private Collection groupByHashsum(Collection<Set<FileEntry>> groupedFiles, final int threadCount, final boolean partialChecksum) {
+	private Collection groupByHashsum(Collection<Set<FileEntry>> groupedFiles, final int threadCount, final boolean usePartialChecksum) {
 		final Map<String, Set<FileEntry>> groupedFilesMap = new HashMap<>();
-		ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+		final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
 		for (Set<FileEntry> files : groupedFiles) {
 			if (files.size() > 1) {
@@ -133,7 +129,7 @@ public class DupsFinder {
 						@Override
 						public void run() {
 							try {
-								final String hashSum = partialChecksum
+								final String hashSum = usePartialChecksum
 										? fileEntry.getPartialHashSum(PARTIAL_CHECKSUM_BYTES)
 										: fileEntry.getHashSum();
 								synchronized (groupedFilesMap) {
@@ -148,6 +144,7 @@ public class DupsFinder {
 								System.err.println("WARN " + ex);
 							}
 						}
+
 					});
 				}
 			}
@@ -167,20 +164,33 @@ public class DupsFinder {
 	 * @param groupedFilesMap collection of identical files groups
 	 * @throws HashsumCalculationException
 	 */
-	private void printDuplicates(Collection<Set<FileEntry>> groupedFiles) throws HashsumCalculationException {
+	private void printResults(Collection<Set<FileEntry>> groupedFiles) throws HashsumCalculationException {
+		int duplicatesCount = 0;
+		long wastedSpace = 0;
+		final StringBuilder sb = new StringBuilder();
+
 		for (Set<FileEntry> files : groupedFiles) {
 			final int dupsForGroupCount = files.size();
 			if (dupsForGroupCount > 1) {
-				duplicatesCount += dupsForGroupCount;
 				long size = 0;
 				for (FileEntry entry : files) {
 					size = entry.getSize();
-					final String entryStr = String.format("%s:%s:%s:\"%s\"", entry.getHashSum(), dupsForGroupCount, size, entry.getPath());
-					System.out.println(entryStr);
+					sb.append(entry.getHashSum()).append(':')
+							.append(dupsForGroupCount).append(':')
+							.append(size).append(":\"")
+							.append(entry.getPath()).append("\"").append('\n');
 				}
+				// update counters
+				duplicatesCount += dupsForGroupCount;
 				wastedSpace += (dupsForGroupCount - 1) * size;
 			}
 		}
+		// add summary part
+		final String summaryStr = String.format("Examined %s files, found %s dups, total wasted space %s",
+				filesCount, duplicatesCount, humanReadableByteCount(wastedSpace, false));
+		sb.append(summaryStr).append('\n');
+		// print output
+		System.out.println(sb);
 	}
 
 	/**
