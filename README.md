@@ -12,7 +12,7 @@ Checkout the source code and navigate to the project folder (directory with pom.
 
 To build the jar file execute
 
-***mvn install***
+***mvn package***
 
 Jar file will be built and stored in the target directory.
 
