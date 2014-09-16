@@ -18,4 +18,6 @@ Jar file will be built and stored in the target directory.
 
 To run execute
 
-***java -jar target/dups-0.0.1-SNAPSHOT.jar <directory>***
+***java -jar target/dups-0.0.1-SNAPSHOT.jar [directory]***
+
+If [directory] is not provided, current directory is used.
