@@ -52,6 +52,10 @@ public class FileEntry {
 		if (partialHashSum == null) {
 			partialHashSum = Hashsum.getSha1sum(Paths.get(path), firstBytesCount);
 		}
+		// optimization: if file size <= firstBytesCount, partialHashSum = HashSum
+		if (size <= firstBytesCount) {
+			hashSum = partialHashSum;
+		}
 		return partialHashSum;
 	}
 
