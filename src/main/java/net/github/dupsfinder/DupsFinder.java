@@ -35,19 +35,19 @@ public class DupsFinder {
 			List<List<FileEntry>> duplicateFilesList = completeFilesList.parallelStream()
 					// group files by size
 					.collect(Collectors.groupingByConcurrent(FileEntry::getSize)).values().parallelStream()
-					// keep only groups with > 1 elements
+					// keep only groups with > 1 element
 					.filter(p -> p.size() > 1)
 					.flatMap(p -> p.parallelStream())
 					// group remaining files by partial hashsum
 					.collect(Collectors.groupingByConcurrent(FileEntry::getPartialHashSum)).values().parallelStream()
-					// keep only groups with > 1 elements
+					// keep only groups with > 1 element
 					.filter(p -> p.size() > 1)
 					.flatMap(p -> p.parallelStream())
 					// filter out files entries with enpty partial hashsum (this means that hashsum calculation failed)
 					.filter(p -> !p.getPartialHashSum().isEmpty())
 					// group files by file hashsum
 					.collect(Collectors.groupingByConcurrent(FileEntry::getHashSum)).values().parallelStream()
-					// keep only groups with > 1 elements
+					// keep only groups with > 1 element
 					.filter(p -> p.size() > 1)
 					// store results to the list
 					.collect(Collectors.toList());
