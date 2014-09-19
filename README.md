@@ -27,7 +27,7 @@ Output format
 
 {SHA-1 sum}:{number of duplicates}:{file size in bytes}:{file full path}
 
-Duplicates files list is printed to stdout and all other output (first informaion line, summary at the end and all warnings/errors) is printed to stderr.
+Duplicates files list is printed to stdout and all other output (first informaion line, summary at the end and all warnings/errors) is printed to stderr, so required part of the output can be easily filtered by output redirection.
 
 Implementation details
 ----------------------
