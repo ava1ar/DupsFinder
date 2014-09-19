@@ -12,12 +12,17 @@ import java.nio.file.Paths;
  */
 public class FileEntry {
 
+	// size of part to calculate partial checksum
+	private static final int PARTIAL_CHECKSUM_BYTES = 1024;
+
 	// stored initially while isntance creation
 	private final String path;
-	private final Long size;
+	private final long size;
 	// calculated on demand
 	private String partialHashSum;
 	private String hashSum;
+	// set from external
+	private int dupsCount;
 
 	private FileEntry(Path path) throws IOException {
 		this.path = path.toString();
@@ -28,7 +33,7 @@ public class FileEntry {
 	static FileEntry of(Path path) throws IOException {
 		return new FileEntry(path);
 	}
-	
+
 	/**
 	 * @return file absolute path
 	 */
@@ -44,29 +49,54 @@ public class FileEntry {
 	}
 
 	/**
-	 * @param firstBytesCount
-	 * @return first firstBytesCount bytes of file hash sum
-	 * @throws net.github.dupsfinder.HashsumCalculationException
+	 *
+	 * @return duplicates count
 	 */
-	public String getPartialHashSum(final int firstBytesCount) throws HashsumCalculationException {
+	public int getDupsCount() {
+		return dupsCount;
+	}
+
+	/**
+	 * Set file duplicates count
+	 *
+	 * @param dupsCount
+	 * @return FileEntry instance with property set
+	 */
+	public FileEntry setDupsCount(int dupsCount) {
+		this.dupsCount = dupsCount;
+		return this;
+	}
+
+	/**
+	 * @return first firstBytesCount bytes of file hash sum
+	 */
+	public String getPartialHashSum() {
 		if (partialHashSum == null) {
-			partialHashSum = Hashsum.getSha1sum(Paths.get(path), firstBytesCount);
-		}
-		// optimization: if file size <= firstBytesCount, partialHashSum = HashSum
-		if (size <= firstBytesCount) {
-			hashSum = partialHashSum;
+			partialHashSum = Hashsum.getSHA1sum(Paths.get(path), PARTIAL_CHECKSUM_BYTES);
+			/* optimization: if partialHashSum is empty (this means generation failed)
+			 or if file size <= firstBytesCount, then hashSum = partialHashSum */
+			if (partialHashSum.isEmpty() || size <= PARTIAL_CHECKSUM_BYTES) {
+				hashSum = partialHashSum;
+			}
 		}
 		return partialHashSum;
 	}
 
 	/**
 	 * @return file hash sum
-	 * @throws net.github.dupsfinder.HashsumCalculationException
 	 */
-	public String getHashSum() throws HashsumCalculationException {
+	public String getHashSum() {
 		if (hashSum == null) {
-			hashSum = Hashsum.getSha1sum(Paths.get(path));
+			hashSum = Hashsum.getSHA1sum(Paths.get(path));
 		}
 		return hashSum;
+	}
+
+	@Override
+	public String toString() {
+		return new StringBuilder(getHashSum()).append(':')
+				.append(getDupsCount()).append(':')
+				.append(getSize()).append(":")
+				.append(getPath()).toString();
 	}
 }
