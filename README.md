@@ -34,4 +34,4 @@ Implementation details
 
 The main idea behind the application is multiple operations of grouping files by set of file properties and droping files with unique property value, so the remaining files in groups have equal property value. File size, hashsum of first 1024 bytes of file and hashsum of the complete file are used as the file properties for grouping. Every grouping operation excludes unique files and pass remaining to the next grouping operation, so at the end only groups of identical files remain.
 
-First version requires Java 7 and up and using ExecutorService for parallel calculations. Never versions require Java 8 and use parallel streams for multithreading execution.
+First version requires Java 7 and up and using ExecutorService for parallel calculations. Never versions require Java 8 and use parallel streams for multithreaded execution.
