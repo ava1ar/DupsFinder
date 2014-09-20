@@ -1,17 +1,11 @@
 package net.github.dupsfinder;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
-
-import static java.nio.file.FileVisitResult.CONTINUE;
 
 public class DupsFinder {
 
@@ -59,38 +53,21 @@ public class DupsFinder {
 	}
 
 	/**
-	 * Method returns list of all files to be compared, recursively walking inside specified path
+	 * Method returns list of all files to be compared, recursively walking inside specified path using multiple threads
 	 *
 	 * @param path of the root directory to start
 	 * @return list of files to be compared
 	 * @throws IOException
 	 */
-	private List<FileEntry> getFilesList(Path path) throws IOException {
-		final List<FileEntry> fileEntries = new ArrayList<>();
-
-		Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-
-			@Override
-			public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs) {
-				// only working with regular files
-				if (attrs.isRegularFile()) {
-					try {
-						fileEntries.add(FileEntry.of(path));
-					} catch (IOException ex) {
-						System.err.println("WARN " + ex);
-					}
-				}
-				return CONTINUE;
-			}
-
-			@Override
-			public FileVisitResult visitFileFailed(Path file, IOException ex) {
-				System.err.println("WARN " + ex);
-				return CONTINUE;
-			}
-		});
-
-		return fileEntries;
+	private List<FileEntry> getFilesList(Path path) {
+		final ForkJoinPool pool = new ForkJoinPool();
+		final DirectoryProcessor processor = new DirectoryProcessor(path);
+		pool.execute(processor);
+		while (!processor.isDone()) {
+			// wait for all tasks to finish
+		}
+		pool.shutdown();
+		return processor.join();
 	}
 
 	/**
