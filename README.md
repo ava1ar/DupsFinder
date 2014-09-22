@@ -38,6 +38,5 @@ First version requires Java 7 and up and using ExecutorService for parallel calc
 
 Branches
 --------
-* [**master**](https://github.com/ava1ar/DupsFinder/tree/master) - main development branch with stable code and most reliable implementation.
-* [**parallel**](https://github.com/ava1ar/DupsFinder/tree/parallel) - expiremental branch, where walking over directories tree implemented in multitreaded way using Java [Fork/Join framework](http://docs.oracle.com/javase/tutorial/essential/concurrency/forkjoin.html). Do not show performace advantage over single-threaded approach from the master in my tests, but may introduce "Too many open files" exceptions if open files limit in operating system is too low. Most likely will not be merged into master, but shows good case of Fork/Join usage.
-* [**executorservice**](https://github.com/ava1ar/DupsFinder/tree/executorservice) - old branch, which doesn't contain Java8 specific code and using ExecutorService for parallel execution. Will run on Java7+.
+* [**master**](https://github.com/ava1ar/DupsFinder/tree/master) - main development branch with stable code and most reliable implementation. Actively uses Java8-specific features.
+* [**executorservice**](https://github.com/ava1ar/DupsFinder/tree/executorservice) - old branch, which doesn't contain Java8-specific code and using ExecutorService for parallel execution and parallel filetree walker based on Fork/Join java framework. Will run on Java7+.
