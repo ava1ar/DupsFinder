@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 public class DupsFinder {
@@ -24,7 +23,7 @@ public class DupsFinder {
 			final Path rootDirectory = Paths.get(rootDir);
 			System.err.format("Searching for duplicates in the \"%s\" directory.\n", rootDirectory.toRealPath());
 			// list of all files to be compared
-			final List<FileEntry> completeFilesList = getFilesList(rootDirectory);
+			final List<FileEntry> completeFilesList = ParallelFileTreeWalker.listFiles(rootDirectory);
 			// process list of files to get the list of lists of files with identical hashsums
 			List<List<FileEntry>> duplicateFilesList = completeFilesList.parallelStream()
 					// group files by size
@@ -50,24 +49,6 @@ public class DupsFinder {
 		} catch (IOException ex) {
 			System.err.println("WARN " + ex);
 		}
-	}
-
-	/**
-	 * Method returns list of all files to be compared, recursively walking inside specified path using multiple threads
-	 *
-	 * @param path of the root directory to start
-	 * @return list of files to be compared
-	 * @throws IOException
-	 */
-	private List<FileEntry> getFilesList(Path path) {
-		final ForkJoinPool pool = new ForkJoinPool();
-		final DirectoryProcessor processor = new DirectoryProcessor(path);
-		pool.execute(processor);
-		while (!processor.isDone()) {
-			// wait for all tasks to finish
-		}
-		pool.shutdown();
-		return processor.join();
 	}
 
 	/**
