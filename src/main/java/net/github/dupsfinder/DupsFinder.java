@@ -1,17 +1,10 @@
 package net.github.dupsfinder;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static java.nio.file.FileVisitResult.CONTINUE;
 
 public class DupsFinder {
 
@@ -30,7 +23,7 @@ public class DupsFinder {
 			final Path rootDirectory = Paths.get(rootDir);
 			System.err.format("Searching for duplicates in the \"%s\" directory.\n", rootDirectory.toRealPath());
 			// list of all files to be compared
-			final List<FileEntry> completeFilesList = getFilesList(rootDirectory);
+			final List<FileEntry> completeFilesList = ParallelFileTreeWalker.listFiles(rootDirectory);
 			// process list of files to get the list of lists of files with identical hashsums
 			List<List<FileEntry>> duplicateFilesList = completeFilesList.parallelStream()
 					// group files by size
@@ -56,41 +49,6 @@ public class DupsFinder {
 		} catch (IOException ex) {
 			System.err.println("WARN " + ex);
 		}
-	}
-
-	/**
-	 * Method returns list of all files to be compared, recursively walking inside specified path
-	 *
-	 * @param path of the root directory to start
-	 * @return list of files to be compared
-	 * @throws IOException
-	 */
-	private List<FileEntry> getFilesList(Path path) throws IOException {
-		final List<FileEntry> fileEntries = new ArrayList<>();
-
-		Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-
-			@Override
-			public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs) {
-				// only working with regular files
-				if (attrs.isRegularFile()) {
-					try {
-						fileEntries.add(FileEntry.of(path));
-					} catch (IOException ex) {
-						System.err.println("WARN " + ex);
-					}
-				}
-				return CONTINUE;
-			}
-
-			@Override
-			public FileVisitResult visitFileFailed(Path file, IOException ex) {
-				System.err.println("WARN " + ex);
-				return CONTINUE;
-			}
-		});
-
-		return fileEntries;
 	}
 
 	/**
