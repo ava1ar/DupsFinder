@@ -9,7 +9,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * Hashsum calculations utility class
+ * Hash sum calculations utility class
  *
  * @author ava1ar
  */
@@ -28,7 +28,7 @@ public class Hashsum {
 	 * @param path path for file
 	 * @return SHA-1 checksum of the file
 	 */
-	public static String getSHA1sum(Path path) {
+	static String getSHA1sum(Path path) {
 		return getSHA1sum(path, 0);
 	}
 
@@ -39,7 +39,7 @@ public class Hashsum {
 	 * @param maxBytes calculate checksum only for first maxBytes bytes
 	 * @return SHA-1 checksum of the file
 	 */
-	public static String getSHA1sum(Path path, int maxBytes) {
+	static String getSHA1sum(Path path, int maxBytes) {
 		return getHashSum(path, "SHA-1", maxBytes);
 	}
 

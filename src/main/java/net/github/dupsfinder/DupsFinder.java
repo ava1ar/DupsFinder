@@ -19,36 +19,40 @@ public class DupsFinder {
 	 * @param rootDir directory to look for duplicate files
 	 */
 	public void process(final String rootDir) {
+		final Path rootDirectory = Paths.get(rootDir);
 		try {
-			final Path rootDirectory = Paths.get(rootDir);
 			System.err.format("Searching for duplicates in the \"%s\" directory.\n", rootDirectory.toRealPath());
-			// list of all files to be compared
-			final List<FileEntry> completeFilesList = ParallelFileTreeWalker.listFiles(rootDirectory);
-			// process list of files to get the list of lists of files with identical hashsums
-			List<List<FileEntry>> duplicateFilesList = completeFilesList.parallelStream()
-					// group files by size
-					.collect(Collectors.groupingByConcurrent(FileEntry::getSize)).values().parallelStream()
-					// keep only groups with > 1 element
-					.filter(p -> p.size() > 1)
-					.flatMap(p -> p.parallelStream())
-					// group remaining files by partial hashsum
-					.collect(Collectors.groupingByConcurrent(FileEntry::getPartialHashSum)).values().parallelStream()
-					// keep only groups with > 1 element
-					.filter(p -> p.size() > 1)
-					.flatMap(p -> p.parallelStream())
-					// filter out files entries with enpty partial hashsum (this means that hashsum calculation failed)
-					.filter(p -> !p.getPartialHashSum().isEmpty())
-					// group files by file hashsum
-					.collect(Collectors.groupingByConcurrent(FileEntry::getHashSum)).values().parallelStream()
-					// keep only groups with > 1 element
-					.filter(p -> p.size() > 1)
-					// store results to the list
-					.collect(Collectors.toList());
-			// calculate summary and print results
-			printResults(completeFilesList.size(), duplicateFilesList);
 		} catch (IOException ex) {
 			System.err.println("WARN " + ex);
 		}
+		// list of all files to be compared
+		// TODO: after https://bugs.openjdk.java.net/browse/JDK-8039910 is fixed,  Files.walk stream can be used as a source
+		final List<FileEntry> completeFilesList = ParallelFileTreeWalker.listFiles(rootDirectory);
+
+		// process list of files to get the list of lists of files with identical hashsums
+		List<List<FileEntry>> duplicateFilesList = completeFilesList.parallelStream()
+				// group files by size
+				.collect(Collectors.groupingByConcurrent(FileEntry::getSize)).values().parallelStream()
+				// keep only groups with > 1 element
+				.filter(p -> p.size() > 1)
+				.flatMap(p -> p.parallelStream())
+				// filter out files, for which getting size failed
+				.filter(p -> p.getSize() >= 0)
+				// group remaining files by partial hashsum
+				.collect(Collectors.groupingByConcurrent(FileEntry::getPartialHashSum)).values().parallelStream()
+				// keep only groups with > 1 element
+				.filter(p -> p.size() > 1)
+				.flatMap(p -> p.parallelStream())
+				// filter out files entries with enpty partial hashsum (this means that hashsum calculation failed)
+				.filter(p -> !p.getPartialHashSum().isEmpty())
+				// group files by file hashsum
+				.collect(Collectors.groupingByConcurrent(FileEntry::getHashSum)).values().parallelStream()
+				// keep only groups with > 1 element
+				.filter(p -> p.size() > 1)
+				// store results to the list
+				.collect(Collectors.toList());
+		// calculate summary and print results
+		printResults(completeFilesList.size(), duplicateFilesList);
 	}
 
 	/**

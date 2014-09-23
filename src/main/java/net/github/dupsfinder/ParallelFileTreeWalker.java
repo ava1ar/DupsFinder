@@ -19,33 +19,29 @@ import static java.nio.file.FileVisitResult.CONTINUE;
  */
 public class ParallelFileTreeWalker {
 
-	private static class RecursiveWalk extends RecursiveTask<List<FileEntry>> {
+	private static class RecursiveWalker extends RecursiveTask<List<FileEntry>> {
 
 		private final Path dir;
 
-		public RecursiveWalk(Path dir) {
+		private RecursiveWalker(Path dir) {
 			this.dir = dir;
 		}
 
 		@Override
 		protected List<FileEntry> compute() {
-			final List<RecursiveWalk> walkers = new ArrayList<>();
+			final List<RecursiveWalker> walkers = new ArrayList<>();
 			final List<FileEntry> fileEntries = new ArrayList<>();
 			try {
 				Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
 
 					@Override
 					public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-						if (attrs.isDirectory()) {
-							if (dir.equals(RecursiveWalk.this.dir)) {
-								return FileVisitResult.CONTINUE;
-							} else {
-								RecursiveWalk walk = new RecursiveWalk(dir);
-								walk.fork();
-								walkers.add(walk);
-								return FileVisitResult.SKIP_SUBTREE;
-							}
+						if (dir.equals(RecursiveWalker.this.dir)) {
+							return FileVisitResult.CONTINUE;
 						} else {
+							RecursiveWalker walker = new RecursiveWalker(dir);
+							walker.fork();
+							walkers.add(walker);
 							return FileVisitResult.SKIP_SUBTREE;
 						}
 					}
@@ -63,11 +59,11 @@ public class ParallelFileTreeWalker {
 						System.err.println("WARN " + ex);
 						return CONTINUE;
 					}
-
 				});
 			} catch (IOException ex) {
 				System.err.println("WARN " + ex);
 			}
+
 			// join results of parallel executions
 			walkers.stream().forEach((task) -> {
 				fileEntries.addAll(task.join());
@@ -76,7 +72,7 @@ public class ParallelFileTreeWalker {
 		}
 	}
 
-	public static List<FileEntry> listFiles(Path rootDir) {
-		return new ForkJoinPool().invoke(new RecursiveWalk(rootDir));
+	static List<FileEntry> listFiles(Path rootDir) {
+		return new ForkJoinPool().invoke(new RecursiveWalker(rootDir));
 	}
 }
