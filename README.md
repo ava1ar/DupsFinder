@@ -36,6 +36,6 @@ The main idea behind the application is multiple operations of grouping files by
 
 Branches
 --------
-* [**master**](https://github.com/ava1ar/DupsFinder/tree/master) - main development branch. Actively uses Java8-specific features (streams, lambdas) and require Java8+ to run.
+* [**master**](https://github.com/ava1ar/DupsFinder/tree/master) - main development branch for Java8-based implementation. Actively uses Java8-specific features (streams, lambdas) and require Java8+ to run.
 * [**java7**](https://github.com/ava1ar/DupsFinder/tree/java7) - branch for Java7-based implementation. Uses ExecutorService for parallel execution and parallel filetree walker based on Fork/Join java framework. Requires Java7+ to run.
 * [**java6**](https://github.com/ava1ar/DupsFinder/tree/java6) - branch for Java6-based implementation. Uses ExecutorService for parallel execution. Requires Java6+ to run.
