@@ -56,25 +56,6 @@ public class FileEntry {
 	}
 
 	/**
-	 *
-	 * @return duplicates count
-	 */
-	public int getDupsCount() {
-		return dupsCount;
-	}
-
-	/**
-	 * Set file duplicates count
-	 *
-	 * @param dupsCount
-	 * @return FileEntry instance with property set
-	 */
-	public FileEntry setDupsCount(int dupsCount) {
-		this.dupsCount = dupsCount;
-		return this;
-	}
-
-	/**
 	 * @return first firstBytesCount bytes of file hash sum
 	 */
 	public String getPartialHashSum() {
@@ -105,5 +86,24 @@ public class FileEntry {
 				.append(getDupsCount()).append(':')
 				.append(getSize()).append(":")
 				.append(getPath()).toString();
+	}
+
+	/**
+	 *
+	 * @return duplicates count
+	 */
+	public int getDupsCount() {
+		return dupsCount;
+	}
+
+	/**
+	 * Set file duplicates count
+	 *
+	 * @param dupsCount
+	 * @return FileEntry instance with property set
+	 */
+	public FileEntry setDupsCount(int dupsCount) {
+		this.dupsCount = dupsCount;
+		return this;
 	}
 }

@@ -36,14 +36,14 @@ public class DupsFinder {
 				// keep only groups with > 1 element
 				.filter(p -> p.size() > 1)
 				.flatMap(p -> p.parallelStream())
-				// filter out files, for which getting size failed
+				// filter out files with size = -1 (this means that file size getting failed)
 				.filter(p -> p.getSize() >= 0)
 				// group remaining files by partial hashsum
 				.collect(Collectors.groupingByConcurrent(FileEntry::getPartialHashSum)).values().parallelStream()
 				// keep only groups with > 1 element
 				.filter(p -> p.size() > 1)
 				.flatMap(p -> p.parallelStream())
-				// filter out files entries with enpty partial hashsum (this means that hashsum calculation failed)
+				// filter out files entries with empty partial hashsum (this means that hashsum calculation failed)
 				.filter(p -> !p.getPartialHashSum().isEmpty())
 				// group files by file hashsum
 				.collect(Collectors.groupingByConcurrent(FileEntry::getHashSum)).values().parallelStream()
@@ -67,20 +67,20 @@ public class DupsFinder {
 		int duplicatesCount = 0;
 		long wastedSpace = 0;
 		// iterate through all groups of duplicate files
-		for (List<FileEntry> files : duplicateFilesList) {
+		for (List<FileEntry> duplicateFilesGroup : duplicateFilesList) {
 			// number of duplicate files in group
-			final int groupDuplicatesCount = files.size();
-			long size = -1;
-			for (FileEntry fileEntry : files) {
-				if (size == -1) {
-					size = fileEntry.getSize();
+			final int groupDuplicateFilesCount = duplicateFilesGroup.size();
+			long fileSize = -1;
+			for (FileEntry fileEntry : duplicateFilesGroup) {
+				if (fileSize == -1) {
+					fileSize = fileEntry.getSize();
 				}
 				// append duplicates files list
-				sb.append(fileEntry.setDupsCount(groupDuplicatesCount)).append('\n');
+				sb.append(fileEntry.setDupsCount(groupDuplicateFilesCount)).append('\n');
 			}
 			// update counters for duplicate files and wasted space
-			duplicatesCount += groupDuplicatesCount;
-			wastedSpace += (groupDuplicatesCount - 1) * size;
+			duplicatesCount += groupDuplicateFilesCount;
+			wastedSpace += (groupDuplicateFilesCount - 1) * fileSize;
 		}
 		// print output and summary with statistics
 		System.out.print(sb);
