@@ -25,7 +25,8 @@ public class DupsFinder {
 		} catch (IOException ex) {
 			System.err.println("WARN " + ex);
 		}
-		// list of all files to be compared
+
+		// build a list of all files to be compared
 		// TODO: after https://bugs.openjdk.java.net/browse/JDK-8039910 is fixed,  Files.walk stream can be used as a source
 		final List<FileEntry> completeFilesList = ParallelFileTreeWalker.listFiles(rootDirectory);
 
@@ -51,8 +52,9 @@ public class DupsFinder {
 				.filter(p -> p.size() > 1)
 				// store results to the list
 				.collect(Collectors.toList());
+
 		// calculate summary and print results
-		printResults(completeFilesList.size(), duplicateFilesList);
+		printResults(duplicateFilesList, completeFilesList.size());
 	}
 
 	/**
@@ -61,11 +63,12 @@ public class DupsFinder {
 	 * @param totalCheckedFilesCount total number of checked files - used in summary output
 	 * @param duplicateFilesList     list of list of duplicate files
 	 */
-	private void printResults(int totalCheckedFilesCount, List<List<FileEntry>> duplicateFilesList) {
+	private void printResults(List<List<FileEntry>> duplicateFilesList, int totalCheckedFilesCount) {
 		// calculate statistics and prepare output
-		final StringBuilder sb = new StringBuilder();
 		int duplicatesCount = 0;
 		long wastedSpace = 0;
+		final StringBuilder sb = new StringBuilder();
+
 		// iterate through all groups of duplicate files
 		for (List<FileEntry> duplicateFilesGroup : duplicateFilesList) {
 			// number of duplicate files in group
