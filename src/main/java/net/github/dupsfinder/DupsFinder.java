@@ -1,15 +1,8 @@
 package net.github.dupsfinder;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-
-import static java.nio.file.FileVisitResult.CONTINUE;
-
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,8 +12,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class DupsFinder {
-
-	private static final int PARTIAL_CHECKSUM_BYTES = 1024;
 
 	public static void main(String[] args) {
 		// setting root directory from command line parameter using current dir if not provided
@@ -32,7 +23,7 @@ public class DupsFinder {
 	}
 
 	private final int threadsCount;
-	private int filesCount = 0;
+	private int filesCount;
 
 	private DupsFinder(int threadsCount) {
 		this.threadsCount = threadsCount;
@@ -49,89 +40,47 @@ public class DupsFinder {
 	 * @param rootDir directory to looks for a duplicate files
 	 */
 	public void process(final String rootDir) {
+		final Path rootDirectory = Paths.get(rootDir);
 		try {
-			final Path rootDirectory = Paths.get(rootDir);
-			System.out.println("Searching for duplicates in the \"" + rootDirectory.toRealPath() + "\" directory...");
-
-			// grouping by file size
-			final Collection groupedByFileSize = groupBySize(rootDirectory);
-			// grouping files with identical size by partial hashsum (SHA-1) using multiple threads
-			final Collection groupedByPartialHashsum = groupByHashsum(groupedByFileSize, threadsCount, true);
-			// grouping files with identical partial hashsum by complete hashsum (SHA-1) using multiple threads
-			final Collection groupedByHashsum = groupByHashsum(groupedByPartialHashsum, threadsCount, false);
-
-			// print diplicates from groupedByHashsum and total summary
-			printResults(groupedByHashsum);
-		} catch (IOException | HashsumCalculationException ex) {
+			System.err.format("Searching for duplicates in the \"%s\" directory.\n", rootDirectory.toRealPath());
+		} catch (IOException ex) {
 			System.err.println("WARN " + ex);
 		}
-	}
 
-	/**
-	 * Method takes directory and groups all files and subdirectories from it recursively into groups with same file
-	 * size
-	 *
-	 * @param path of the root directory to start
-	 * @return collection of files groups with identical size
-	 * @throws IOException
-	 */
-	private Collection groupBySize(Path root) throws IOException {
-		final Map<Long, Set<FileEntry>> groupedFilesMap = new HashMap<>();
-
-		// walk over given folder, grouping files with the same size
-		Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
-
-			@Override
-			public FileVisitResult visitFile(final Path path, final BasicFileAttributes attrs) throws IOException {
-				// only working with regular files
-				if (attrs.isRegularFile()) {
-					filesCount++;
-					final FileEntry fileEntry = FileEntry.of(path);
-					final long fileSize = fileEntry.getSize();
-					Set<FileEntry> dups = groupedFilesMap.get(fileSize);
-					if (dups == null) {
-						dups = new HashSet<>();
-						groupedFilesMap.put(fileSize, dups);
-					}
-					dups.add(fileEntry);
-				}
-				return CONTINUE;
-			}
-
-			@Override
-			public FileVisitResult visitFileFailed(Path file, IOException ex) {
-				System.err.println("WARN " + ex);
-				return CONTINUE;
-			}
-		}
-		);
-		return groupedFilesMap.values();
+		// grouping all files in the rootDir by file size using multiple threads
+		final Collection<Set<FileEntry>> groupedBySizeFilesList = ParallelFileTreeWalker.listFiles(rootDirectory);
+		// grouping files with identical size by partial hashsum (SHA-1) using multiple threads
+		final Collection groupByPartialHashsum = groupByHashsum(threadsCount, false, groupedBySizeFilesList);
+		// grouping files with identical partial hashsum by complete file hashsum (SHA-1) using multiple threads
+		final Collection groupByCompleteHashsum = groupByHashsum(threadsCount, true, groupByPartialHashsum);
+		// print diplicates from groupedByHashsum and total summary
+		printResults(groupByCompleteHashsum);
 	}
 
 	/**
 	 * Method takes collection of file groups with identical size, looks for groups with two and more files and returns
 	 * collection of file groups with identical hash sum
 	 *
-	 * @param groupedFiles collection of files groups with identical size
-	 * @param threadCount number of threads to execute method
+	 * @param groupedFiles       collection of files groups with identical size
+	 * @param threadCount        number of threads to execute method
 	 * @param usePartialChecksum if true, use partial checksum instead of whole file checksum
 	 * @return collection of files groups with identical checksum (partial or complete)
 	 */
-	private Collection groupByHashsum(Collection<Set<FileEntry>> groupedFiles, final int threadCount, final boolean usePartialChecksum) {
+	private Collection groupByHashsum(final int threadCount, final boolean useCompleteFileChecksum, Collection<Set<FileEntry>> groupedFiles) {
 		final Map<String, Set<FileEntry>> groupedFilesMap = new HashMap<>();
 		final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
 		for (Set<FileEntry> files : groupedFiles) {
-			if (files.size() > 1) {
+			final int groupSize = files.size();
+			if (groupSize > 1) {
 				for (final FileEntry fileEntry : files) {
 					executor.execute(new Runnable() {
 
 						@Override
 						public void run() {
-							try {
-								final String hashSum = usePartialChecksum
-										? fileEntry.getPartialHashSum(PARTIAL_CHECKSUM_BYTES)
-										: fileEntry.getHashSum();
+							final String hashSum = useCompleteFileChecksum ? fileEntry.getHashSum() : fileEntry.getPartialHashSum();
+							// empty hashsum = hashsum calculation failed, so skipping such entries
+							if (!hashSum.isEmpty()) {
 								synchronized (groupedFilesMap) {
 									Set<FileEntry> dups = groupedFilesMap.get(hashSum);
 									if (dups == null) {
@@ -140,13 +89,14 @@ public class DupsFinder {
 									}
 									dups.add(fileEntry);
 								}
-							} catch (HashsumCalculationException ex) {
-								System.err.println("WARN " + ex);
 							}
 						}
-
 					});
 				}
+			}
+			// calculate total files count, but only during the first pass
+			if (!useCompleteFileChecksum) {
+				filesCount += groupSize;
 			}
 		}
 
@@ -164,49 +114,50 @@ public class DupsFinder {
 	 * @param groupedFilesMap collection of identical files groups
 	 * @throws HashsumCalculationException
 	 */
-	private void printResults(Collection<Set<FileEntry>> groupedFiles) throws HashsumCalculationException {
+	private void printResults(Collection<Set<FileEntry>> groupedFiles) {
+		// calculate statistics and prepare output
 		int duplicatesCount = 0;
 		long wastedSpace = 0;
 		final StringBuilder sb = new StringBuilder();
 
-		for (Set<FileEntry> files : groupedFiles) {
-			final int dupsForGroupCount = files.size();
-			if (dupsForGroupCount > 1) {
-				long size = 0;
-				for (FileEntry entry : files) {
-					size = entry.getSize();
-					sb.append(entry.getHashSum()).append(':')
-							.append(dupsForGroupCount).append(':')
-							.append(size).append(":\"")
-							.append(entry.getPath()).append("\"").append('\n');
+		// iterate through all groups of duplicate files
+		for (Set<FileEntry> dupFiles : groupedFiles) {
+			// number of duplicate files in group
+			final int groupDuplicateFilesCount = dupFiles.size();
+			if (groupDuplicateFilesCount > 1) {
+				long fileSize = -1;
+				for (FileEntry fileEntry : dupFiles) {
+					if (fileSize == -1) {
+						fileSize = fileEntry.getSize();
+					}
+					// append duplicates files list
+					sb.append(fileEntry.setDupsCount(groupDuplicateFilesCount)).append('\n');
 				}
-				// update counters
-				duplicatesCount += dupsForGroupCount;
-				wastedSpace += (dupsForGroupCount - 1) * size;
+				// update counters for duplicate files and wasted space
+				duplicatesCount += groupDuplicateFilesCount;
+				wastedSpace += (groupDuplicateFilesCount - 1) * fileSize;
 			}
 		}
-		// add summary part
-		final String summaryStr = String.format("Examined %s files, found %s dups, total wasted space %s",
-				filesCount, duplicatesCount, humanReadableByteCount(wastedSpace, false));
-		sb.append(summaryStr).append('\n');
-		// print output
-		System.out.println(sb);
+		// print output and summary with statistics
+		System.out.print(sb);
+		System.err.format("Examined %s files, found %s dups, total wasted space %s\n",
+				filesCount, duplicatesCount, printBytesCount(wastedSpace, false));
 	}
 
 	/**
 	 * Converts size in bytes to the human-readable form
 	 *
 	 * @param bytes input size in bytes
-	 * @param si if true, use SI, otherwise use historical
-	 * @return human-readable size value
+	 * @param useSI if true, use SI (1000-based), otherwise use traditional (1024-based)
+	 * @return String with human-readable size value
 	 */
-	private String humanReadableByteCount(long bytes, boolean si) {
-		final int unit = si ? 1000 : 1024;
+	private String printBytesCount(long bytes, boolean useSI) {
+		final int unit = useSI ? 1000 : 1024;
 		if (bytes < unit) {
 			return bytes + " B";
 		}
 		final int exp = (int) (Math.log(bytes) / Math.log(unit));
-		final String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (si ? "" : "i");
+		final String pre = (useSI ? "kMGTPE" : "KMGTPE").charAt(exp - 1) + (useSI ? "" : "i");
 		return String.format("%.2f %sB", bytes / Math.pow(unit, exp), pre);
 	}
 }
