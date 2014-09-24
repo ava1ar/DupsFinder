@@ -34,9 +34,8 @@ Implementation details
 
 The main idea behind the application is multiple operations of grouping files by set of file properties and droping files with unique property value, so the remaining files in groups have equal property value. File size, hashsum of first 1024 bytes of file and hashsum of the complete file are used as the file properties for grouping. Every grouping operation excludes unique files and pass remaining to the next grouping operation, so at the end only groups of identical files remain.
 
-First version requires Java 7 and up and using ExecutorService for parallel calculations. Never versions require Java 8 and use parallel streams for multithreaded execution.
-
 Branches
 --------
-* [**master**](https://github.com/ava1ar/DupsFinder/tree/master) - main development branch with stable code and most reliable implementation. Actively uses Java8-specific features.
-* [**executorservice**](https://github.com/ava1ar/DupsFinder/tree/executorservice) - old branch, which doesn't contain Java8-specific code and using ExecutorService for parallel execution and parallel filetree walker based on Fork/Join java framework. Will run on Java7+.
+* [**master**](https://github.com/ava1ar/DupsFinder/tree/master) - main development branch for Java8-based implementation. Actively uses Java8-specific features (streams, lambdas) and require Java8+ to run.
+* [**java7**](https://github.com/ava1ar/DupsFinder/tree/java7) - branch for Java7-based implementation. Uses ExecutorService for parallel execution and parallel filetree walker based on Fork/Join java framework. Requires Java7+ to run.
+* [**java6**](https://github.com/ava1ar/DupsFinder/tree/java6) - branch for Java6-based implementation. Uses ExecutorService for parallel execution. Requires Java6+ to run.
