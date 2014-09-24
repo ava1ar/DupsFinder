@@ -56,12 +56,15 @@ public class ParallelFileTreeWalker {
 						if (attrs.isRegularFile()) {
 							FileEntry fileEntry = FileEntry.of(file);
 							final long size = fileEntry.getSize();
-							Set<FileEntry> dups = groupedFilesMap.get(size);
-							if (dups == null) {
-								dups = new HashSet<>();
-								groupedFilesMap.put(size, dups);
+							// size = -1 means getting file size failed, so we can skip this file
+							if (size >= 0) {
+								Set<FileEntry> dups = groupedFilesMap.get(size);
+								if (dups == null) {
+									dups = new HashSet<>();
+									groupedFilesMap.put(size, dups);
+								}
+								dups.add(fileEntry);
 							}
-							dups.add(fileEntry);
 						}
 						return CONTINUE;
 					}

@@ -43,9 +43,7 @@ public class FileEntry {
 	 * @return file size
 	 */
 	public long getSize() {
-		if (size >= 0) {
-			return size;
-		} else {
+		if (size == -1) {
 			try {
 				size = Files.size(path);
 			} catch (IOException ex) {
@@ -80,21 +78,6 @@ public class FileEntry {
 		return hashSum;
 	}
 
-	@Override
-	public String toString() {
-		return new StringBuilder(getHashSum()).append(':')
-				.append(getDupsCount()).append(':')
-				.append(getSize()).append(":")
-				.append(getPath()).toString();
-	}
-
-	public StringBuilder builder() {
-		return new StringBuilder(getHashSum()).append(':')
-				.append(getDupsCount()).append(':')
-				.append(getSize()).append(":")
-				.append(getPath());
-	}
-
 	/**
 	 *
 	 * @return duplicates count
@@ -112,5 +95,13 @@ public class FileEntry {
 	public FileEntry setDupsCount(int dupsCount) {
 		this.dupsCount = dupsCount;
 		return this;
+	}
+
+	@Override
+	public String toString() {
+		return new StringBuilder(getHashSum()).append(':')
+				.append(getDupsCount()).append(':')
+				.append(getSize()).append(":")
+				.append(getPath()).toString();
 	}
 }
